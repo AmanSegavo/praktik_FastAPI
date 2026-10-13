@@ -1,46 +1,62 @@
+import os
 from fastapi import FastAPI, HTTPException
 import pandas as pd
-import psycopg2 
 
-# create object
-app = FastAPI()
-
-# create connection
-conn = psycopg2.connect(
-    dbname="neondb", user="neondb_owner", password="npg_sLfVg8iW4EwO",
-    host="ep-steep-water-a102fmjl-pooler.ap-southeast-1.aws.neon.tech",
+# Object FastAPI
+app = FastAPI(
+    title="BikeShare API",
+    description="API untuk mengakses data perjalanan sepeda.",
+    version="1.0.0"
 )
 
-@app.get('/profiles')
-def getProfiles():
-    df = pd.read_sql("select * from profiles;", conn)
+# Endpoint - Beranda
+@app.get('/')
+def handleHome():
+    username = (
+        os.environ.get("USER")
+        or os.environ.get("USERNAME")
+        or "User"
+    )
+
+    return {
+        "status": "success",
+        "pesan": f"Halo, {username}! 👋😊",
+        "selamat_datang": "Selamat datang di BikeShare API 🚲",
+        "deskripsi": "Layanan API untuk mengakses data perjalanan sepeda.",
+        "fitur": {
+            "beranda": "/",
+            "semua_data": "/data",
+            "data_berdasarkan_id": "/data/{id}",
+            "dokumentasi": "/docs"
+        },
+        "developer": "Abdurrahman Assgaf 👨‍💻",
+        "versi": "1.0.0 --> masih awal awal 😅🤭"
+    }
+
+
+# Endpoint - Mengambil semua data
+@app.get("/data")
+def handleData():
+    df = pd.read_csv("bikeshare_trips.csv")
 
     return {
         "data": df.to_dict(orient="records")
     }
 
-# create endpoint
-@app.get("/")
-def handleData():
-    return {"message": "hello"}
 
-
-@app.get("/dataset")
-def getData():
+# Endpoint - Mengambil data berdasarkan ID
+@app.get("/data/{id}")
+def handleDataFilter(id: int):
     df = pd.read_csv("bikeshare_trips.csv")
 
-    return {"data": df.to_dict(orient="records")}
+    hasil = df[df.trip_id == id]
 
-
-@app.get("/dataset/{trip_id}")
-def getData(trip_id: int):
-    df = pd.read_csv("bikeshare_trips.csv")
-
-    # filter
-    result = df[df["trip_id"] == trip_id]
-
-    # handling error
-    if len(result) == 0:
-        raise HTTPException(status_code=404, detail="Data not found")
-
-    return {"data": result.to_dict(orient="records")}
+    if len(hasil) == 0:
+        # berikan error dengan fungsi raise bedanya return ngembalikan data
+        # tapi kalo raise berupa objek yaitu adalah error yang di ambil dari
+        # fungsi HTTPException di library FastAPI
+        raise HTTPException(status_code=404, detail="🫢 datanya gak ada")
+     
+    return {
+        "data": hasil.to_dict(orient="records")
+    }
